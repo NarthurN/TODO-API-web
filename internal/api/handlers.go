@@ -3,7 +3,7 @@ package api
 import "net/http"
 
 type Storage interface {
-	Insert(id int) int
+	Close() error
 }
 
 type Loger interface {
@@ -12,11 +12,10 @@ type Loger interface {
 
 type Api struct {
 	Storage Storage
-	Loger   Loger
 }
 
-func New() *Api {
-	return &Api{}
+func New(db Storage) *Api {
+	return &Api{Storage: db}
 }
 
 func (h *Api) Home() http.HandlerFunc {

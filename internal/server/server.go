@@ -49,11 +49,15 @@ func (s *Server) Run() error {
 	}
 }
 
-func New() *Server {
+type storage interface {
+	Close() error
+}
+
+func New(db storage) *Server {
 	return &Server{
 		GoServer: &http.Server{
 			Addr:           ":" + config.Cfg.TODO_PORT,
-			Handler:        NewMux(),
+			Handler:        NewMux(db),
 			ReadTimeout:    10 * time.Second,
 			WriteTimeout:   10 * time.Second,
 			MaxHeaderBytes: 1 << 20,
@@ -61,9 +65,9 @@ func New() *Server {
 	}
 }
 
-func NewMux() http.Handler {
+func NewMux(db storage) http.Handler {
 	mux := http.NewServeMux()
-	api := api.New()
+	api := api.New(db)
 	_ = api
 	mux.Handle(`GET /`, http.FileServer(http.Dir(`./web`)))
 

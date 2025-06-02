@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NarthurN/TODO-API-web/internal/api"
 	"github.com/NarthurN/TODO-API-web/internal/config"
+	"github.com/NarthurN/TODO-API-web/pkg/api"
 	"github.com/NarthurN/TODO-API-web/pkg/loger"
 	"github.com/NarthurN/TODO-API-web/pkg/middleware"
 )

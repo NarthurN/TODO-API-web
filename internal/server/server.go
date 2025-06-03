@@ -68,9 +68,11 @@ func New(db storage) *Server {
 func NewMux(db storage) http.Handler {
 	mux := http.NewServeMux()
 	api := api.New(db)
-	_ = api
-	mux.Handle(`GET /`, http.FileServer(http.Dir(`./web`)))
 
+	mux.Handle(`GET /`, http.FileServer(http.Dir(`./web`)))
+	// "api/nextdate?now=20240126&date=20240126&repeat=y"
+	mux.Handle("GET /api/nextdate", api.NextDayHandler())
+	//mux.Handle("GET ", api.NextDayHandler())
 	wrappedMux := middleware.Logging(mux)
 
 	return wrappedMux

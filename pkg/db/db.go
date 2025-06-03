@@ -44,7 +44,7 @@ func createTable(storage *TaskStorage) error {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			date CHAR(8) NOT NULL DEFAULT "",
 			title VARCHAR(256) NOT NULL DEFAULT "",
-			comment TEXT,
+			comment TEXT NOT NULL DEFAULT "",
 			repeat VARCHAR(128) NOT NULL DEFAULT ""
 		);
 		CREATE INDEX IF NOT EXISTS scheduler_date ON scheduler (date);

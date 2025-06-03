@@ -55,6 +55,8 @@ func colorize(s interface{}, color int) string {
 
 func Init() {
 	L = slog.New(&PrettyHandler{
-		Handler: slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}),
+		Handler: slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+			AddSource: true,
+		}),
 	})
 }

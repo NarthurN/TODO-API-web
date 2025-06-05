@@ -36,3 +36,4 @@ jobs:
         go test -v -run ^TestNextDate$ ./tests
         go test -run ^TestAddTask$ ./tests
         go test -run ^TestTasks$ ./tests
+        go test -run ^TestEditTask$ ./tests

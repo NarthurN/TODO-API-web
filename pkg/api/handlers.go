@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/NarthurN/TODO-API-web/pkg/loger"
@@ -18,6 +19,8 @@ var ErrInvalidDate error = errors.New("date is in invalid format")
 type Storage interface {
 	GetTasks(limit int, search string) ([]Task, error)
 	AddTask(task Task) (int64, error)
+	GetTask(id string) (*Task, error)
+	UpdateTask(task *Task) error
 	Close() error
 }
 
@@ -115,5 +118,68 @@ func (h *Api) GetTasksHandle() http.Handler {
 		WriteJSON(w, TasksResponse{
 			Tasks: tasks,
 		})
+	})
+}
+
+func (h *Api) GetTaskHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			loger.L.Error("no id provided")
+			SendErrorResponse(w, "Не указан идентификатор")
+			return
+		}
+
+		task, err := h.Storage.GetTask(id)
+		if err != nil {
+			loger.L.Error("failed to get task", "id", id, "error", err)
+			if strings.Contains(err.Error(), "no task with id") {
+				SendErrorResponse(w, "Задача не найдена")
+			} else {
+				SendErrorResponse(w, "Ошибка сервера")
+			}
+			return
+		}
+
+		loger.L.Info("task retrieved successfully", "id", id)
+		WriteJSON(w, task)
+	})
+}
+
+func (h *Api) ChangeTaskHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var task Task
+		if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+			loger.L.Error(ErrInvalidJSONFormat.Error())
+			SendErrorResponse(w, ErrInvalidJSONFormat.Error())
+			return
+		}
+
+		if task.Title == "" {
+			loger.L.Error(ErrTitleIsEmpty.Error())
+			SendErrorResponse(w, ErrTitleIsEmpty.Error())
+			return
+		}
+
+		err := checkDate(&task)
+		if err != nil {
+			loger.L.Error(ErrTitleIsEmpty.Error())
+			SendErrorResponse(w, ErrTitleIsEmpty.Error())
+			return
+		}
+
+		err = h.Storage.UpdateTask(&task)
+		if err != nil {
+			loger.L.Error("failed to update task", "id", task.ID, "error", err)
+			if strings.Contains(err.Error(), "no task found with id") {
+				SendErrorResponse(w, "Задача не найдена")
+			} else {
+				SendErrorResponse(w, "Ошибка сервера")
+			}
+			return
+		}
+
+		loger.L.Info("task updated successfully", "id", task.ID)
+		WriteJSON(w, struct{}{})
 	})
 }

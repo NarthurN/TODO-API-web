@@ -253,3 +253,11 @@ func afterNow(now, t time.Time) bool {
 	tDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 	return nowDate.After(tDate)
 }
+
+func IsDate(search string) (string, bool) {
+	date, err := time.Parse("02.01.2006", search)
+	if err != nil {
+		return search, false
+	}
+	return date.Format("20060102"), true
+}

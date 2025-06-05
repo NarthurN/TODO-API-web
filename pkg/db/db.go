@@ -126,3 +126,61 @@ func (t *TaskStorage) GetTasks(limit int, rowSearch string) ([]api.Task, error) 
 	loger.L.Info("Получили tasks", "tasks", tasks)
 	return tasks, nil
 }
+
+func (t *TaskStorage) GetTask(id string) (*api.Task, error) {
+	if id == "" {
+		loger.L.Error("invalid task ID", "id", id)
+		return nil, fmt.Errorf("invalid task ID: %s", id)
+	}
+
+	task := &api.Task{}
+	err := t.SqlStorage.QueryRow(
+		"SELECT id, date, title, comment, repeat FROM scheduler WHERE id = :id",
+		sql.Named("id", id),
+	).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err == sql.ErrNoRows {
+		loger.L.Error("no task found", "id", id)
+		return task, fmt.Errorf("no task with id %s", id)
+	}
+	if err != nil {
+		loger.L.Error("failed to query task", "id", id, "error", err)
+		return task, fmt.Errorf("t.SqlStorage.QueryRow: failed to get task with id %s: %w", id, err)
+	}
+
+	loger.L.Info("task retrieved", "id", id)
+	return task, nil
+}
+
+func (t *TaskStorage) UpdateTask(task *api.Task) error {
+	if task.ID == "" {
+		loger.L.Error("invalid task ID", "id", task.ID)
+		return fmt.Errorf("invalid task ID: %s", task.ID)
+	}
+
+	result, err := t.SqlStorage.Exec(`
+        UPDATE scheduler 
+        SET date = :date, title = :title, comment = :comment, repeat = :repeat 
+        WHERE id = :id`,
+		sql.Named("date", task.Date),
+		sql.Named("title", task.Title),
+		sql.Named("comment", task.Comment),
+		sql.Named("repeat", task.Repeat),
+		sql.Named("id", task.ID))
+	if err != nil {
+		loger.L.Error("failed to update task", "id", task.ID, "error", err)
+		return fmt.Errorf("t.SqlStorage.Exec: failed to update task with id %s: %w", task.ID, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		loger.L.Error("failed to get rows affected", "id", task.ID, "error", err)
+		return fmt.Errorf("result.RowsAffected: failed to check rows affected for id %s: %w", task.ID, err)
+	}
+	if rowsAffected == 0 {
+		loger.L.Error("no task found", "id", task.ID)
+		return fmt.Errorf("no task found with id %s", task.ID)
+	}
+
+	loger.L.Info("task updated successfully", "id", task.ID)
+	return nil
+}

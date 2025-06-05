@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/NarthurN/TODO-API-web/internal/config"
+	"github.com/NarthurN/TODO-API-web/pkg/api"
 	_ "modernc.org/sqlite"
 )
 
@@ -62,4 +63,17 @@ func (t *TaskStorage) Close() error {
 		return fmt.Errorf("t.SqlStorage.Close: error closing db: %w", err)
 	}
 	return nil
+}
+
+func (t *TaskStorage) AddTask(task api.Task) (int64, error) {
+	res, err := t.SqlStorage.Exec(`INSERT INTO scheduler (date, title, comment, repeat) VALUES (:date, :title, :comment, :repeat)`,
+		sql.Named("date", task.Date),
+		sql.Named("title", task.Title),
+		sql.Named("comment", task.Comment),
+		sql.Named("repeat", task.Repeat))
+	if err != nil {
+		return 0, fmt.Errorf("t.SqlStorage.Exec: error by inserting task: %w", err)
+	}
+
+	return res.LastInsertId()
 }

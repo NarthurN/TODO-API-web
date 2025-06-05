@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 	"sort"
 	"strconv"
@@ -68,6 +70,9 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			}
 		}
 	case week:
+		if len(repeatSlice) < 2 {
+			return "", ErrInvalidRepeatParameter
+		}
 		daysOfWeekStr := strings.Split(repeatSlice[1], ",")
 		var daysInt []int
 		for _, dayStr := range daysOfWeekStr {
@@ -183,4 +188,66 @@ func LastDayOfMonth(t time.Time) time.Time {
 
 func PreLastDayOfMonth(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month()+1, 1, 0, 0, 0, 0, t.Location()).Add(-48 * time.Hour)
+}
+
+func SendErrorResponse(w http.ResponseWriter, errorMsg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	response := Response{
+		Error: errorMsg,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func SendIdResponse(w http.ResponseWriter, id int64) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+	response := Response{
+		ID: id,
+	}
+	json.NewEncoder(w).Encode(response)
+}
+
+func checkDate(task *Task) error {
+	now := time.Now()
+
+	// Если task.Date пустая, устанавливаем текущую дату
+	if task.Date == "" {
+		task.Date = now.Format(layout)
+		return nil
+	}
+
+	// Проверяем формат даты
+	t, err := time.Parse(layout, task.Date)
+	if err != nil {
+		return ErrInvalidDate
+	}
+
+	// Проверяем правило повторения, если оно указано
+	var next string
+	if task.Repeat != "" {
+		next, err = NextDate(now, task.Date, task.Repeat)
+		if err != nil {
+			return fmt.Errorf("NextDate: cannot get NextDate: %w", err)
+		}
+	}
+
+	// Проверяем, является ли дата меньше или равна текущей
+	if afterNow(now, t) {
+		if task.Repeat == "" {
+			// Если правила повторения нет, устанавливаем текущую дату
+			task.Date = now.Format(layout)
+		} else {
+			// Если правило повторения есть, устанавливаем следующую дату
+			task.Date = next
+		}
+	}
+
+	return nil
+}
+
+func afterNow(now, t time.Time) bool {
+	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	tDate := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	return nowDate.After(tDate)
 }

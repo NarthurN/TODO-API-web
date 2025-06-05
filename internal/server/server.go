@@ -51,6 +51,7 @@ func (s *Server) Run() error {
 
 type storage interface {
 	AddTask(task api.Task) (int64, error)
+	GetTasks(limit int, search string) ([]api.Task, error)
 	Close() error
 }
 
@@ -73,7 +74,9 @@ func NewMux(db storage) http.Handler {
 	mux.Handle(`GET /`, http.FileServer(http.Dir(`./web`)))
 	// "api/nextdate?now=20240126&date=20240126&repeat=y"
 	mux.Handle("GET /api/nextdate", api.NextDayHandler())
+
 	mux.Handle("POST /api/task", api.AddTaskHandle())
+	mux.Handle("GET /api/tasks", api.GetTasksHandle())
 	wrappedMux := middleware.Logging(mux)
 
 	return wrappedMux

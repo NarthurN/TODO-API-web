@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const layout = "20060102"
+const Layout = "20060102"
 
 const (
 	day   = "d"
@@ -37,7 +37,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	}
 	repeatSlice := strings.Split(repeat, " ")
 
-	timeDstart, err := time.Parse(layout, dstart)
+	timeDstart, err := time.Parse(Layout, dstart)
 	if err != nil {
 		return "", fmt.Errorf("time.Parse: cannot parse dstart: %w", err)
 	}
@@ -179,7 +179,7 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		return "", ErrUnknownFormat
 	}
 
-	return timeDstart.Format(layout), nil
+	return timeDstart.Format(Layout), nil
 }
 
 func LastDayOfMonth(t time.Time) time.Time {
@@ -201,29 +201,34 @@ func SendErrorResponse(w http.ResponseWriter, errorMsg string) {
 
 func SendIdResponse(w http.ResponseWriter, id int64) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(http.StatusOK)
 	response := Response{
 		ID: id,
 	}
 	json.NewEncoder(w).Encode(response)
 }
 
+func WriteJSON(w http.ResponseWriter, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+	}
+}
+
 func checkDate(task *Task) error {
 	now := time.Now()
 
-	// Если task.Date пустая, устанавливаем текущую дату
 	if task.Date == "" {
-		task.Date = now.Format(layout)
+		task.Date = now.Format(Layout)
 		return nil
 	}
 
-	// Проверяем формат даты
-	t, err := time.Parse(layout, task.Date)
+	t, err := time.Parse(Layout, task.Date)
 	if err != nil {
 		return ErrInvalidDate
 	}
 
-	// Проверяем правило повторения, если оно указано
 	var next string
 	if task.Repeat != "" {
 		next, err = NextDate(now, task.Date, task.Repeat)
@@ -232,13 +237,10 @@ func checkDate(task *Task) error {
 		}
 	}
 
-	// Проверяем, является ли дата меньше или равна текущей
 	if afterNow(now, t) {
 		if task.Repeat == "" {
-			// Если правила повторения нет, устанавливаем текущую дату
-			task.Date = now.Format(layout)
+			task.Date = now.Format(Layout)
 		} else {
-			// Если правило повторения есть, устанавливаем следующую дату
 			task.Date = next
 		}
 	}

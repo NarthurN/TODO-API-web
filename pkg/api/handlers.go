@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/NarthurN/TODO-API-web/pkg/loger"
@@ -15,6 +16,7 @@ var ErrTitleIsEmpty error = errors.New("title is empty")
 var ErrInvalidDate error = errors.New("date is in invalid format")
 
 type Storage interface {
+	GetTasks(limit int, search string) ([]Task, error)
 	AddTask(task Task) (int64, error)
 	Close() error
 }
@@ -40,7 +42,7 @@ func (h *Api) NextDayHandler() http.Handler {
 			now = time.Now().UTC()
 		} else {
 			var err error
-			now, err = time.Parse(layout, nowStr)
+			now, err = time.Parse(Layout, nowStr)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 				return
@@ -87,7 +89,7 @@ func (h *Api) AddTaskHandle() http.Handler {
 
 		id, err := h.Storage.AddTask(task)
 		loger.L.Info("Отпраляем id", "id", id)
-		task.ID = id
+		task.ID = strconv.Itoa(int(id))
 		if err != nil {
 			loger.L.Error(err.Error())
 			SendErrorResponse(w, err.Error())
@@ -99,5 +101,19 @@ func (h *Api) AddTaskHandle() http.Handler {
 			SendIdResponse(w, id)
 			return
 		}
+	})
+}
+
+func (h *Api) GetTasksHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		search := r.URL.Query().Get("search")
+		tasks, err := h.Storage.GetTasks(50, search) // в параметре максимальное количество записей
+		if err != nil {
+			SendErrorResponse(w, err.Error())
+			return
+		}
+		WriteJSON(w, TasksResponse{
+			Tasks: tasks,
+		})
 	})
 }

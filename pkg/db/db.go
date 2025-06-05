@@ -7,6 +7,7 @@ import (
 
 	"github.com/NarthurN/TODO-API-web/internal/config"
 	"github.com/NarthurN/TODO-API-web/pkg/api"
+	"github.com/NarthurN/TODO-API-web/pkg/loger"
 	_ "modernc.org/sqlite"
 )
 
@@ -76,4 +77,52 @@ func (t *TaskStorage) AddTask(task api.Task) (int64, error) {
 	}
 
 	return res.LastInsertId()
+}
+
+func (t *TaskStorage) GetTasks(limit int, rowSearch string) ([]api.Task, error) {
+	loger.L.Info("Зпрос search", "search", rowSearch)
+	tasks := make([]api.Task, 0)
+	var rows *sql.Rows
+	search, ok := IsDate(rowSearch)
+	if ok {
+		var err error
+		rows, err = t.SqlStorage.Query(`SELECT * FROM scheduler WHERE date = :search LIMIT :limit `,
+			sql.Named("search", search),
+			sql.Named("limit", limit))
+		if err != nil {
+			return nil, fmt.Errorf("t.SqlStorage.Query: cannot do SELECT: %w", err)
+		}
+	} else {
+		var err error
+		rows, err = t.SqlStorage.Query(`
+			SELECT * FROM scheduler 
+			WHERE title LIKE '%' || :search || '%'
+			OR comment LIKE '%' || :search || '%'
+			ORDER BY date 
+			LIMIT :limit`,
+			sql.Named("search", search),
+			sql.Named("limit", limit))
+		if err != nil {
+			return nil, fmt.Errorf("t.SqlStorage.Query: cannot do SELECT: %w", err)
+		}
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		task := api.Task{}
+
+		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		if err != nil {
+			return nil, fmt.Errorf("rows.Scan: cannot do Scan: %w", err)
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err: err in rows: %w", err)
+	}
+	loger.L.Info("Получили tasks", "tasks", tasks)
+	return tasks, nil
 }

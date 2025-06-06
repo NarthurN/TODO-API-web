@@ -12,6 +12,8 @@ require (
 	modernc.org/sqlite v1.37.1
 )
 
+require github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect

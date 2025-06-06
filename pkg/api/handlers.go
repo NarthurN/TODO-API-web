@@ -1,20 +1,25 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/NarthurN/TODO-API-web/pkg/loger"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var ErrInvalidJSONFormat error = errors.New("invalid JSON format")
-var ErrTitleIsEmpty error = errors.New("title is empty")
+var ErrTitleIsEmpty error = errors.New("пустой заголовок")
 var ErrInvalidDate error = errors.New("date is in invalid format")
+var ErrIncorrectPassword error = errors.New("неверный пароль")
 
 type Storage interface {
 	GetTasks(limit int, search string) ([]Task, error)
@@ -250,5 +255,53 @@ func (h *Api) DeleteOrRepeatHandle() http.Handler {
 		}
 
 		WriteJSON(w, struct{}{})
+	})
+}
+
+func (h *Api) SignInHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		expectedPassword := os.Getenv("TODO_PASSWORD")
+		loger.L.Info("expectedPassword:", "expectedPassword", expectedPassword)
+
+		password := struct {
+			Pass string `json:"password"`
+		}{}
+
+		if err := json.NewDecoder(r.Body).Decode(&password); err != nil {
+			loger.L.Error(" json.NewDecoder(r.Body).Decode:", "err", err)
+			SendErrorResponse(w, "Невозможно преобразовать пароль")
+			return
+		}
+		loger.L.Info("password.Pass:", "password.Pass", password.Pass)
+		if password.Pass != expectedPassword {
+			loger.L.Error(" json.NewDecoder(r.Body).Decode:", "err", ErrIncorrectPassword)
+			SendErrorResponse(w, ErrIncorrectPassword.Error())
+			return
+		}
+
+		hashPass32bytes := sha256.Sum256([]byte(password.Pass))
+		hashPass := hex.EncodeToString(hashPass32bytes[:])
+
+		claims := &jwt.MapClaims{
+			"password": hashPass,
+		}
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		signedToken, err := token.SignedString([]byte(os.Getenv("TODO_JWT_SECRET")))
+		if err != nil {
+			loger.L.Error("token.SignedString:", "err", err)
+			SendErrorResponse(w, http.StatusText(http.StatusInternalServerError))
+			return
+		}
+
+		tokenResponse := struct {
+			Token string `json:"token"`
+		}{
+			Token: signedToken,
+		}
+
+		loger.L.Info("Сформирован token:", "token", signedToken)
+		WriteJSON(w, tokenResponse)
 	})
 }

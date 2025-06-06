@@ -79,16 +79,20 @@ func NewMux(db storage) http.Handler {
 	// "api/nextdate?now=20240126&date=20240126&repeat=y"
 	mux.Handle("GET /api/nextdate", api.NextDayHandler())
 
-	mux.Handle("GET /api/tasks", api.GetTasksHandle())
-	mux.Handle("POST /api/task", api.AddTaskHandle())
+	mux.Handle("GET /api/tasks", middleware.Auth(api.GetTasksHandle()))
+	mux.Handle("POST /api/task", middleware.Auth(api.AddTaskHandle()))
 
 	// GET /api/task?id=<идентификатор>
-	mux.Handle("GET /api/task", api.GetTaskHandle())
-	mux.Handle("PUT /api/task", api.ChangeTaskHandle())
+	mux.Handle("GET /api/task", middleware.Auth(api.GetTaskHandle()))
+	mux.Handle("PUT /api/task", middleware.Auth(api.ChangeTaskHandle()))
 	// /api/task/done?id=<идентификатор>
-	mux.Handle("POST /api/task/done", api.DeleteOrRepeatHandle())
+	mux.Handle("POST /api/task/done", middleware.Auth(api.DeleteOrRepeatHandle()))
 	// /api/task?id=<идентификатор>
-	mux.Handle("DELETE /api/task", api.DeleteTaskHandle())
+	mux.Handle("DELETE /api/task", middleware.Auth(api.DeleteTaskHandle()))
+
+	//аутентификация
+	mux.Handle("POST /api/signin", api.SignInHandle())
+
 	wrappedMux := middleware.Logging(mux)
 
 	return wrappedMux

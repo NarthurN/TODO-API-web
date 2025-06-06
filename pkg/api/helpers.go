@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/NarthurN/TODO-API-web/pkg/loger"
 )
 
 const Layout = "20060102"
@@ -196,7 +198,10 @@ func SendErrorResponse(w http.ResponseWriter, errorMsg string) {
 	response := Response{
 		Error: errorMsg,
 	}
-	json.NewEncoder(w).Encode(response)
+	loger.L.Info("Response sent", "response", response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+	}
 }
 
 func SendIdResponse(w http.ResponseWriter, id int64) {
@@ -205,12 +210,16 @@ func SendIdResponse(w http.ResponseWriter, id int64) {
 	response := Response{
 		ID: id,
 	}
-	json.NewEncoder(w).Encode(response)
+	loger.L.Info("Response sent", "response", response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
+	}
 }
 
 func WriteJSON(w http.ResponseWriter, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	loger.L.Info("Response sent", "response", data)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		http.Error(w, "Failed to encode JSON", http.StatusInternalServerError)
 	}

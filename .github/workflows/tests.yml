@@ -24,16 +24,8 @@ jobs:
     - name: Install dependencies
       run: go mod tidy
       
-    - name: Run unit tests
-      run: |
-        go test -v -run ^TestDB$ ./tests
-
     - name: Run integration tests with server
       run: |
         CGO_ENABLED=0 GOOS=linux go run ./cmd/app/ &
         timeout 30s bash -c 'until curl -s http://localhost:7540 >/dev/null; do sleep 1; done'
-        go test -run ^TestApp$ ./tests
-        go test -v -run ^TestNextDate$ ./tests
-        go test -run ^TestAddTask$ ./tests
-        go test -run ^TestTasks$ ./tests
-        go test -run ^TestEditTask$ ./tests
+        go test ./tests

@@ -21,6 +21,8 @@ type Storage interface {
 	AddTask(task Task) (int64, error)
 	GetTask(id string) (*Task, error)
 	UpdateTask(task *Task) error
+	DeleteTask(id string) error
+	UpdateDate(next string, id string) error
 	Close() error
 }
 
@@ -180,6 +182,73 @@ func (h *Api) ChangeTaskHandle() http.Handler {
 		}
 
 		loger.L.Info("task updated successfully", "id", task.ID)
+		WriteJSON(w, struct{}{})
+	})
+}
+
+func (h *Api) DeleteTaskHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			loger.L.Error("no id provided")
+			SendErrorResponse(w, "Не указан идентификатор")
+			return
+		}
+
+		if err := h.Storage.DeleteTask(id); err != nil {
+			loger.L.Error("no id provided")
+			SendErrorResponse(w, "Нет пользователя с этим ID")
+			return
+		}
+
+		loger.L.Info("task deleted successfully", "id", id)
+		WriteJSON(w, struct{}{})
+	})
+}
+
+func (h *Api) DeleteOrRepeatHandle() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			loger.L.Error("no id provided")
+			SendErrorResponse(w, "Не указан идентификатор")
+			return
+		}
+
+		task, err := h.Storage.GetTask(id)
+		if err != nil {
+			loger.L.Error("cannot do h.Storage.GetTask", "err", err)
+			SendErrorResponse(w, "Нет пользователя с этим ID")
+			return
+		}
+
+		const NoRepeatRule = ""
+		switch task.Repeat {
+		case NoRepeatRule:
+			loger.L.Info("Delete task", "id", task.ID, "repeat", task.Repeat)
+			if err := h.Storage.DeleteTask(id); err != nil {
+				loger.L.Error("no id provided")
+				SendErrorResponse(w, "Нет задачи с этим ID")
+				return
+			}
+			loger.L.Info("task deleted successfully", "id", id)
+		default:
+			loger.L.Info("Update task", "id", task.ID, "repeat", task.Repeat)
+			newDate, err := NextDate(time.Now(), task.Date, task.Repeat)
+			if err != nil {
+				loger.L.Error("h.Storage.DeleteTask:", "err", err)
+				SendErrorResponse(w, "Невозможно обновить задачу")
+				return
+			}
+
+			if err := h.Storage.UpdateDate(newDate, id); err != nil {
+				loger.L.Error("h.Storage.UpdateDate:", "err", err)
+				SendErrorResponse(w, "Невозможно обновить задачу")
+				return
+			}
+			loger.L.Info("task updated successfully", "id", id)
+		}
+
 		WriteJSON(w, struct{}{})
 	})
 }

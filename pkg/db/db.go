@@ -184,3 +184,50 @@ func (t *TaskStorage) UpdateTask(task *api.Task) error {
 	loger.L.Info("task updated successfully", "id", task.ID)
 	return nil
 }
+
+func (t *TaskStorage) DeleteTask(id string) error {
+	res, err := t.SqlStorage.Exec("DELETE FROM scheduler WHERE id = :id", sql.Named("id", id))
+	if err != nil {
+		loger.L.Error("failed to delete task", "id", id, "error", err)
+		return fmt.Errorf("t.SqlStorage.Exec: failed to delete task with id %s: %w", id, err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		loger.L.Error("failed to get rows affected", "id", id, "error", err)
+		return fmt.Errorf("result.RowsAffected: failed to check rows affected for id %s: %w", id, err)
+	}
+	if rowsAffected == 0 {
+		loger.L.Error("no task found", "id", id)
+		return fmt.Errorf("no task found with id %s", id)
+	}
+
+	loger.L.Info("task deleted successfully", "id", id)
+	return nil
+}
+
+func (t *TaskStorage) UpdateDate(next string, id string) error {
+	result, err := t.SqlStorage.Exec(`
+        UPDATE scheduler 
+        SET date = :date 
+        WHERE id = :id`,
+		sql.Named("date", next),
+		sql.Named("id", id))
+	if err != nil {
+		loger.L.Error("failed to update task", "id", id, "error", err)
+		return fmt.Errorf("t.SqlStorage.Exec: failed to update task with id %s: %w", id, err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		loger.L.Error("failed to get rows affected", "id", id, "error", err)
+		return fmt.Errorf("result.RowsAffected: failed to check rows affected for id %s: %w", id, err)
+	}
+	if rowsAffected == 0 {
+		loger.L.Error("no task found", "id", id)
+		return fmt.Errorf("no task found with id %s", id)
+	}
+
+	loger.L.Info("task updated successfully", "id", id)
+	return nil
+}

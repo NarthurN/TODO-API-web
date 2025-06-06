@@ -54,6 +54,8 @@ type storage interface {
 	GetTasks(limit int, search string) ([]api.Task, error)
 	GetTask(id string) (*api.Task, error)
 	UpdateTask(task *api.Task) error
+	DeleteTask(id string) error
+	UpdateDate(next string, id string) error
 	Close() error
 }
 
@@ -83,6 +85,10 @@ func NewMux(db storage) http.Handler {
 	// GET /api/task?id=<идентификатор>
 	mux.Handle("GET /api/task", api.GetTaskHandle())
 	mux.Handle("PUT /api/task", api.ChangeTaskHandle())
+	// /api/task/done?id=<идентификатор>
+	mux.Handle("POST /api/task/done", api.DeleteOrRepeatHandle())
+	// /api/task?id=<идентификатор>
+	mux.Handle("DELETE /api/task", api.DeleteTaskHandle())
 	wrappedMux := middleware.Logging(mux)
 
 	return wrappedMux

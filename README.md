@@ -63,9 +63,10 @@
 
 ### Запуска локально
 
-1. **Склонируйте репозиторий**:
+1. **Склонируйте свой fork репозиторий на комрьютер**:
+  - https://github.com/NarthurN/TODO-API-web
    ```bash
-   git clone https://github.com/NarthurN/TODO-API-web.git
+   git clone <репозиторий>
    cd TODO-API-web
    ```
 
